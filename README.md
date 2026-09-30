@@ -1,42 +1,48 @@
 # My IPTV
 
-A small IPTV playlist service for blitz.cloud.
+Blitz.cloud IPTV service based on the public iptv-org API.
 
-## Features
+## What it does
 
-- Downloads public playlists from iptv-org
-- Updates automatically every 6 hours
-- Keeps the previous playlist if an upstream download fails
-- Generates:
-  - all.m3u
-  - china.m3u
-  - cctv.m3u
-  - japan.m3u
-  - korea.m3u
-  - hongkong.m3u
-  - taiwan.m3u
-- Uses the PORT environment variable supplied by the hosting platform
+Every update:
 
-## Blitz
+1. Downloads iptv-org `streams.json` and `channels.json`.
+2. Groups streams by channel.
+3. Ranks candidates by quality and labels.
+4. Tests the actual stream URL with HTTP GET.
+5. Keeps only streams that return usable HLS/video content.
+6. Keeps at most 5 working sources per channel.
+7. Sorts the surviving sources by quality and response time.
+8. Writes playlists atomically, so a failed update does not destroy the previous working playlist.
 
-Deploy this repository from GitHub using the Dockerfile.
+## Playlists
 
-The image exposes port 8080.
-
-After deployment:
-
-- `/`
-- `/health`
 - `/all.m3u`
-- `/cctv.m3u`
 - `/china.m3u`
+- `/cctv.m3u`
 - `/japan.m3u`
 - `/korea.m3u`
 - `/hongkong.m3u`
 - `/taiwan.m3u`
 
-Optional environment variable:
+## Environment variables
 
-`UPDATE_HOURS=6`
+- `PORT` — supplied automatically by Blitz.
+- `UPDATE_HOURS` — default `6`.
+- `MAX_PER_CHANNEL` — default `5`.
+- `CHECK_WORKERS` — default `32`.
+- `CHECK_TIMEOUT` — default `6` seconds.
 
-The iptv-org public playlists are generated from the project's channel data and published automatically.
+Example:
+
+`MAX_PER_CHANNEL=5`
+
+`CHECK_WORKERS=32`
+
+`CHECK_TIMEOUT=6`
+
+## Important
+
+The checker tests reachability from the Blitz server. A stream can be reachable from Blitz but geo-blocked from your own network, or vice versa.
+
+The public iptv-org playlists normally keep only the best available option for each channel. This service deliberately uses the iptv-org API's full stream list so it can test multiple candidates and retain up to five working backups.
